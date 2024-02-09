@@ -5,19 +5,15 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
 
-type Request struct {
-	PlayerId string `json:"playerId"`
-	Url      string `json:"url"`
-}
-
-func doApiCall(request Request) (string, error) {
+func doApiCall(url string) (string, error) {
 	cocToken := os.Getenv("COC_TOKEN")
 
-	req, err := http.NewRequest("GET", request.Url+"%23"+request.PlayerId, nil)
+	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Set("Authorization", "Bearer "+cocToken)
 	if err != nil {
 		return "", err
@@ -43,22 +39,22 @@ func main() {
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		params := r.URL.Query()
-		playerId := params.Get("playerId")
 		url := params.Get("url")
 
-		if playerId == "" || url == "" {
+		if url == "" {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		request := Request{PlayerId: playerId, Url: url}
-		response, err := doApiCall(request)
+		url = strings.ReplaceAll(url, "#", "%23")
+
+		response, err := doApiCall(url)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		fmt.Println("New request: ", request)
+		fmt.Println("New request: ", url)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(response))
